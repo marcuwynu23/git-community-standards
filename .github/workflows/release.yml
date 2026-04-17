@@ -20,6 +20,21 @@ jobs:
     outputs:
       upload_url: ${{ steps.create.outputs.upload_url }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve release notes path
+        id: notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          NOTES_PATH="docs/releases/${GITHUB_REF_NAME}/RELEASE-NOTES.md"
+          if [ ! -f "${NOTES_PATH}" ]; then
+            echo "Missing release notes file: ${NOTES_PATH}"
+            exit 1
+          fi
+          echo "path=${NOTES_PATH}" >> "${GITHUB_OUTPUT}"
+
       - name: Create GitHub release
         id: create
         uses: actions/create-release@v1
@@ -28,7 +43,7 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           release_name: ${{ github.ref_name }}
-          body_path: RELEASE-NOTES.md
+          body_path: ${{ steps.notes.outputs.path }}
           draft: false
           prerelease: false
 
