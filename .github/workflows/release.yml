@@ -28,6 +28,7 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           release_name: ${{ github.ref_name }}
+          body_path: RELEASE-NOTES.md
           draft: false
           prerelease: false
 
@@ -43,12 +44,12 @@ jobs:
             goos: linux
             goarch: amd64
             ext: ""
-            archive_ext: tar.gz
+            archive_ext: zip
           - runner: ubuntu-latest
             goos: linux
             goarch: arm64
             ext: ""
-            archive_ext: tar.gz
+            archive_ext: zip
           - runner: windows-latest
             goos: windows
             goarch: amd64
@@ -63,12 +64,12 @@ jobs:
             goos: darwin
             goarch: amd64
             ext: ""
-            archive_ext: tar.gz
+            archive_ext: zip
           - runner: macos-latest
             goos: darwin
             goarch: arm64
             ext: ""
-            archive_ext: tar.gz
+            archive_ext: zip
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -94,13 +95,8 @@ jobs:
           GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
             go build -ldflags "-s -w -X main.version=${VERSION}" -o "dist/${BIN_NAME}" .
 
-          if [ "${{ matrix.archive_ext }}" = "zip" ]; then
-            ARCHIVE="dist/${TARGET}.zip"
-            (cd dist && zip -q "${TARGET}.zip" "${BIN_NAME}")
-          else
-            ARCHIVE="dist/${TARGET}.tar.gz"
-            tar -C dist -czf "${ARCHIVE}" "${BIN_NAME}"
-          fi
+          ARCHIVE="dist/${TARGET}.zip"
+          (cd dist && zip -q "${TARGET}.zip" "${BIN_NAME}")
 
           echo "archive=${ARCHIVE}" >> "${GITHUB_OUTPUT}"
 
