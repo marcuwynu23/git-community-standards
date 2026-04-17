@@ -21,6 +21,13 @@ type fileSpec struct {
 	Optional   bool
 }
 
+var categoryDescriptions = map[string]string{
+	"root":            "Root-level community docs (README, CONTRIBUTING, CODE_OF_CONDUCT, RELEASE-NOTES, etc.)",
+	"github":          "GitHub repository metadata files under .github (for example FUNDING.yml)",
+	"issue-templates": "GitHub issue templates under .github/ISSUE_TEMPLATE",
+	"pr-template":     "GitHub pull request template under .github/PULL_REQUEST_TEMPLATE.md",
+}
+
 var categories = map[string][]fileSpec{
 	"root": {
 		{RemotePath: "README.md", LocalPath: "README.md"},
@@ -219,7 +226,11 @@ func listCategories() {
 	}
 	sort.Strings(keys)
 	for _, category := range keys {
-		fmt.Printf("- %s\n", category)
+		description := categoryDescriptions[category]
+		if description == "" {
+			description = "No description available."
+		}
+		fmt.Printf("- %s: %s\n", category, description)
 	}
 }
 
