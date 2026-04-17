@@ -111,7 +111,11 @@ jobs:
             go build -ldflags "-s -w -X main.version=${VERSION}" -o "dist/${BIN_NAME}" .
 
           ARCHIVE="dist/${TARGET}.zip"
-          (cd dist && zip -q "${TARGET}.zip" "${BIN_NAME}")
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            powershell -NoProfile -Command "Compress-Archive -Path 'dist/${BIN_NAME}' -DestinationPath '${ARCHIVE}' -Force"
+          else
+            (cd dist && zip -q "${TARGET}.zip" "${BIN_NAME}")
+          fi
 
           echo "archive=${ARCHIVE}" >> "${GITHUB_OUTPUT}"
 
