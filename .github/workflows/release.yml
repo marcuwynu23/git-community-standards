@@ -18,7 +18,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     outputs:
-      upload_url: ${{ steps.create.outputs.upload_url }}
+      upload_url: ${{ steps.create_with_notes.outputs.upload_url || steps.create_without_notes.outputs.upload_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,14 +29,17 @@ jobs:
         run: |
           set -euo pipefail
           NOTES_PATH="docs/releases/${GITHUB_REF_NAME}/RELEASE-NOTES.md"
-          if [ ! -f "${NOTES_PATH}" ]; then
-            echo "Missing release notes file: ${NOTES_PATH}"
-            exit 1
+          if [ -f "${NOTES_PATH}" ]; then
+            echo "path=${NOTES_PATH}" >> "${GITHUB_OUTPUT}"
+            echo "has_notes=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "has_notes=false" >> "${GITHUB_OUTPUT}"
+            echo "Release notes not found at ${NOTES_PATH}; creating release without notes body"
           fi
-          echo "path=${NOTES_PATH}" >> "${GITHUB_OUTPUT}"
 
-      - name: Create GitHub release
-        id: create
+      - name: Create GitHub release (with notes)
+        id: create_with_notes
+        if: steps.notes.outputs.has_notes == 'true'
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -44,6 +47,18 @@ jobs:
           tag_name: ${{ github.ref_name }}
           release_name: ${{ github.ref_name }}
           body_path: ${{ steps.notes.outputs.path }}
+          draft: false
+          prerelease: false
+
+      - name: Create GitHub release (without notes)
+        id: create_without_notes
+        if: steps.notes.outputs.has_notes != 'true'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: ${{ github.ref_name }}
           draft: false
           prerelease: false
 
@@ -105,16 +120,32 @@ jobs:
           VERSION="${GITHUB_REF_NAME:-dev}"
           TARGET="${APP_NAME}-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}"
           BIN_NAME="${APP_NAME}${{ matrix.ext }}"
-
+          NOTES_PATH="docs/releases/${VERSION}/RELEASE-NOTES.md"
           mkdir -p dist
+          HAS_NOTES="false"
+          if [ -f "${NOTES_PATH}" ]; then
+            cp "${NOTES_PATH}" "dist/RELEASE-NOTES.md"
+            HAS_NOTES="true"
+          else
+            echo "Release notes not found at ${NOTES_PATH}; creating archive without RELEASE-NOTES.md"
+          fi
+
           GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
             go build -ldflags "-s -w -X main.version=${VERSION}" -o "dist/${BIN_NAME}" .
 
           ARCHIVE="dist/${TARGET}.zip"
           if [ "${{ matrix.goos }}" = "windows" ]; then
-            powershell -NoProfile -Command "Compress-Archive -Path 'dist/${BIN_NAME}' -DestinationPath '${ARCHIVE}' -Force"
+            if [ "${HAS_NOTES}" = "true" ]; then
+              powershell -NoProfile -Command "Compress-Archive -Path 'dist/${BIN_NAME}','dist/RELEASE-NOTES.md' -DestinationPath '${ARCHIVE}' -Force"
+            else
+              powershell -NoProfile -Command "Compress-Archive -Path 'dist/${BIN_NAME}' -DestinationPath '${ARCHIVE}' -Force"
+            fi
           else
-            (cd dist && zip -q "${TARGET}.zip" "${BIN_NAME}")
+            if [ "${HAS_NOTES}" = "true" ]; then
+              (cd dist && zip -q "${TARGET}.zip" "${BIN_NAME}" "RELEASE-NOTES.md")
+            else
+              (cd dist && zip -q "${TARGET}.zip" "${BIN_NAME}")
+            fi
           fi
 
           echo "archive=${ARCHIVE}" >> "${GITHUB_OUTPUT}"
