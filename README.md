@@ -1,6 +1,16 @@
+<div align="center">
+
 # git-community-standards
 
 CLI tool to apply standard community files to a GitHub repository from a shared template source.
+
+[![Test](https://img.shields.io/github/actions/workflow/status/marcuwynu23/git-community-standards/test.yml?branch=main&label=test)](https://github.com/marcuwynu23/git-community-standards/actions/workflows/test.yml)
+[![Release](https://img.shields.io/github/actions/workflow/status/marcuwynu23/git-community-standards/release.yml?label=release)](https://github.com/marcuwynu23/git-community-standards/actions/workflows/release.yml)
+[![Latest Release](https://img.shields.io/github/v/release/marcuwynu23/git-community-standards)](https://github.com/marcuwynu23/git-community-standards/releases)
+[![License](https://img.shields.io/github/license/marcuwynu23/git-community-standards)](./LICENSE)
+[![Go Version](https://img.shields.io/badge/go-1.23%2B-00ADD8)](https://go.dev/)
+
+</div>
 
 ## Overview
 
