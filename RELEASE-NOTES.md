@@ -23,6 +23,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 - Usage output standardized around `git community-standards` command form.
 - Documentation tailored to this project and current CLI behavior.
+- Release workflow now publishes archived artifacts (`.zip`) for all OS/architecture targets.
+- GitHub Release body now uses the contents of `RELEASE-NOTES.md`.
 
 ### Deprecated
 - None.

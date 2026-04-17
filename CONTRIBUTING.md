@@ -1,27 +1,57 @@
 # Contributing
 
-Thanks for your interest in improving `git-community-standards`.
+Thanks for your interest in contributing.
 
-We welcome bug fixes, features, documentation improvements, and tooling updates.
+We welcome contributions of all kinds: bug fixes, features, documentation, and suggestions.
 
 ---
 
 ## Getting Started
 
-1. Fork and clone the repository.
-2. Create a branch from `main`.
-3. Make focused changes with clear intent.
-4. Run local checks before opening a PR.
+1. Fork the repository
+2. Clone your fork locally
+3. Create a new branch from `main`
+4. Install dependencies and set up the project
+
+---
+
+## Branching Strategy
+
+We follow a structured branching approach:
+
+### Main Branches
+
+- `main` → Production-ready code
+- `develop` → Integration branch for ongoing development
+
+### Supporting Branches
+
+Use the following naming conventions:
+
+- `feature/<short-description>` → New features
+- `fix/<short-description>` → Bug fixes
+- `chore/<short-description>` → Maintenance tasks
+- `docs/<short-description>` → Documentation updates
+- `refactor/<short-description>` → Code improvements without behavior change
+- `test/<short-description>` → Adding or updating tests
+
+Examples:
+
+```
+feature/add-authentication
+fix/login-validation-error
+docs/update-installation-guide
+```
 
 ---
 
 ## Development Workflow
 
-1. Implement your change in a focused branch.
-2. Keep the CLI behavior consistent across `git community-standards ...` commands.
-3. Update docs (`README.md`, `RELEASE-NOTES.md`) when behavior changes.
-4. Add/update tests when testable behavior changes.
-5. Run local checks:
+1. Create a branch from `develop` (unless it's a hotfix for production)
+2. Make your changes in a focused branch
+3. Follow the project's coding style and conventions
+4. Add or update tests when applicable
+5. Run local checks before submitting:
 
 ```bash
 make test
@@ -30,71 +60,105 @@ make build
 
 ---
 
-## Guidelines
+## Commit Messages (Conventional Commits)
 
-- Keep changes small and focused.
-- Prefer standard library solutions unless a dependency is clearly justified.
-- Preserve backwards compatibility for existing commands when possible.
-- Keep user-facing output clear and actionable.
-- Ensure CI workflows stay green (`test.yml`, `release.yml`).
+We follow the **Conventional Commits** specification.
+
+### Format
+
+```
+<type>(optional scope): <short description>
+```
+
+### Common Types
+
+- `feat` → New feature
+- `fix` → Bug fix
+- `docs` → Documentation changes
+- `style` → Formatting (no code logic changes)
+- `refactor` → Code restructuring
+- `test` → Adding/updating tests
+- `chore` → Maintenance
+
+### Examples
+
+```
+feat(auth): add JWT authentication
+fix(api): handle null response in user service
+docs(readme): update setup instructions
+refactor(core): simplify validation logic
+```
+
+### Rules
+
+- Use lowercase for type and description
+- Keep messages concise and meaningful
+- Use the body for additional context if needed
 
 ---
 
 ## Pull Request Process
 
-1. Rebase/update your branch with `main`.
-2. Ensure checks pass locally (`make test`, `make build`).
-3. Open a PR with:
-   - what changed
-   - why it changed
-   - how you validated it
-4. If CLI output changed, include example command output in the PR description.
+1. Ensure your branch is up to date with `develop`
+2. Verify all tests and checks pass
+3. Open a pull request targeting `develop` (or `main` for hotfixes)
+4. Clearly describe:
+   - What changed
+   - Why it was needed
+   - Any relevant context
+5. Use the PR template:
+   - [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md)
 
----
+Optional:
 
-## Commit Messages
-
-Use clear, concise, intent-first commit messages.
-
-Examples:
-
-```
-fix race condition in worker queue
-add support for custom config path
-update documentation for setup
-```
+- Include screenshots, logs, or examples if applicable
 
 ---
 
 ## Reporting Issues
 
-When opening an issue, please include:
+When reporting bugs, please use the provided template:
+
+- [`.github/ISSUE_TEMPLATE/bug_report.md`](.github/ISSUE_TEMPLATE/bug_report.md)
+
+Include:
 
 - Description of the problem
 - Steps to reproduce
 - Expected vs actual behavior
-- OS, shell, and CLI version (`git community-standards --version`)
+- Environment details (if relevant)
 
 ---
 
 ## Suggestions & Feature Requests
 
-- Explain the problem you want to solve.
-- Describe your proposed command/API behavior.
-- Mention alternatives considered.
+For feature requests and suggestions, please use:
+
+- [`.github/ISSUE_TEMPLATE/feature_request.md`](.github/ISSUE_TEMPLATE/feature_request.md)
+
+Be sure to include:
+
+- The problem you're trying to solve
+- Your proposed solution
+- Any alternatives you've considered
 
 ---
 
 ## Code of Conduct
 
-Please follow `CODE_OF_CONDUCT.md` in all interactions.
+This project follows the guidelines defined in:
+
+- [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
+
+Be respectful and constructive in all interactions.
+Harassment or inappropriate behavior will not be tolerated.
 
 ---
 
 ## Notes
 
-- Maintainers may request changes before merge.
-- Not all contributions are guaranteed to be accepted, but all will be reviewed.
+- Maintainers may request changes before merging
+- Not all contributions may be accepted, but all will be reviewed
 
 ---
 
