@@ -1,0 +1,115 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+
+  create-release:
+    name: create release
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create.outputs.upload_url }}
+    steps:
+      - name: Create GitHub release
+        id: create
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+
+  build-and-release:
+    name: release (${{ matrix.goos }}/${{ matrix.goarch }})
+    needs: create-release
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            ext: ""
+            archive_ext: tar.gz
+          - runner: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            ext: ""
+            archive_ext: tar.gz
+          - runner: windows-latest
+            goos: windows
+            goarch: amd64
+            ext: .exe
+            archive_ext: zip
+          - runner: windows-latest
+            goos: windows
+            goarch: arm64
+            ext: .exe
+            archive_ext: zip
+          - runner: macos-latest
+            goos: darwin
+            goarch: amd64
+            ext: ""
+            archive_ext: tar.gz
+          - runner: macos-latest
+            goos: darwin
+            goarch: arm64
+            ext: ""
+            archive_ext: tar.gz
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build archive
+        id: build
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          APP_NAME="git-community-standards"
+          VERSION="${GITHUB_REF_NAME:-dev}"
+          TARGET="${APP_NAME}-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}"
+          BIN_NAME="${APP_NAME}${{ matrix.ext }}"
+
+          mkdir -p dist
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
+            go build -ldflags "-s -w -X main.version=${VERSION}" -o "dist/${BIN_NAME}" .
+
+          if [ "${{ matrix.archive_ext }}" = "zip" ]; then
+            ARCHIVE="dist/${TARGET}.zip"
+            (cd dist && zip -q "${TARGET}.zip" "${BIN_NAME}")
+          else
+            ARCHIVE="dist/${TARGET}.tar.gz"
+            tar -C dist -czf "${ARCHIVE}" "${BIN_NAME}"
+          fi
+
+          echo "archive=${ARCHIVE}" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload release asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ${{ steps.build.outputs.archive }}
+          asset_name: git-community-standards-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.goarch }}.${{ matrix.archive_ext }}
+          asset_content_type: application/octet-stream
