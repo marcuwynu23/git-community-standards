@@ -13,93 +13,28 @@ jobs:
   test:
     uses: ./.github/workflows/test.yml
 
-  create-release:
-    name: create release
+  release:
+    name: build and release
     needs: test
     runs-on: ubuntu-latest
-    outputs:
-      upload_url: ${{ steps.create_with_notes.outputs.upload_url || steps.create_without_notes.outputs.upload_url }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
 
-      - name: Resolve release notes path
-        id: notes
-        shell: bash
-        run: |
-          set -euo pipefail
-          NOTES_PATH="docs/releases/${GITHUB_REF_NAME}/RELEASE-NOTES.md"
-          if [ -f "${NOTES_PATH}" ]; then
-            echo "path=${NOTES_PATH}" >> "${GITHUB_OUTPUT}"
-            echo "has_notes=true" >> "${GITHUB_OUTPUT}"
-          else
-            echo "has_notes=false" >> "${GITHUB_OUTPUT}"
-            echo "Release notes not found at ${NOTES_PATH}; creating release without notes body"
-          fi
-
-      - name: Create GitHub release (with notes)
-        id: create_with_notes
-        if: steps.notes.outputs.has_notes == 'true'
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref_name }}
-          release_name: ${{ github.ref_name }}
-          body_path: ${{ steps.notes.outputs.path }}
-          draft: false
-          prerelease: false
-
-      - name: Create GitHub release (without notes)
-        id: create_without_notes
-        if: steps.notes.outputs.has_notes != 'true'
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref_name }}
-          release_name: ${{ github.ref_name }}
-          draft: false
-          prerelease: false
-
-  build-and-release:
-    name: release (${{ matrix.goos }}/${{ matrix.goarch }})
-    needs: create-release
-    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - runner: ubuntu-latest
-            goos: linux
-            goarch: amd64
-            ext: ""
-            archive_ext: zip
-          - runner: ubuntu-latest
-            goos: linux
-            goarch: arm64
-            ext: ""
-            archive_ext: zip
-          - runner: windows-latest
-            goos: windows
-            goarch: amd64
-            ext: .exe
-            archive_ext: zip
-          - runner: windows-latest
-            goos: windows
-            goarch: arm64
-            ext: .exe
-            archive_ext: zip
-          - runner: macos-latest
-            goos: darwin
-            goarch: amd64
-            ext: ""
-            archive_ext: zip
-          - runner: macos-latest
-            goos: darwin
-            goarch: arm64
-            ext: ""
-            archive_ext: zip
+          - os: linux
+            arch: amd64
+          - os: linux
+            arch: arm64
+          - os: windows
+            arch: amd64
+          - os: windows
+            arch: arm64
+          - os: darwin
+            arch: amd64
+          - os: darwin
+            arch: arm64
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -110,52 +45,40 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Build archive
-        id: build
+      - name: Get version
+        run: echo "VERSION=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+
+      - name: Build binary
         shell: bash
         run: |
-          set -euo pipefail
+          mkdir -p dist
 
           APP_NAME="git-community-standards"
-          VERSION="${GITHUB_REF_NAME:-dev}"
-          TARGET="${APP_NAME}-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}"
-          BIN_NAME="${APP_NAME}${{ matrix.ext }}"
-          NOTES_PATH="docs/releases/${VERSION}/RELEASE-NOTES.md"
-          mkdir -p dist
-          HAS_NOTES="false"
-          if [ -f "${NOTES_PATH}" ]; then
-            cp "${NOTES_PATH}" "dist/RELEASE-NOTES.md"
-            HAS_NOTES="true"
-          else
-            echo "Release notes not found at ${NOTES_PATH}; creating archive without RELEASE-NOTES.md"
+          BIN="${APP_NAME}-${{ matrix.os }}-${{ matrix.arch }}"
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            BIN="${BIN}.exe"
           fi
 
-          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
-            go build -ldflags "-s -w -X main.version=${VERSION}" -o "dist/${BIN_NAME}" .
+          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} CGO_ENABLED=0 \
+            go build -ldflags "-s -w -X main.version=${VERSION}" \
+            -o "dist/${BIN}" .
 
-          ARCHIVE="dist/${TARGET}.zip"
-          if [ "${{ matrix.goos }}" = "windows" ]; then
-            if [ "${HAS_NOTES}" = "true" ]; then
-              powershell -NoProfile -Command "Compress-Archive -Path 'dist/${BIN_NAME}','dist/RELEASE-NOTES.md' -DestinationPath '${ARCHIVE}' -Force"
+      - name: Package binary
+        shell: bash
+        run: |
+          cd dist
+
+          for file in *; do
+            if [[ "$file" == *.exe ]]; then
+              zip "${file}.zip" "$file"
             else
-              powershell -NoProfile -Command "Compress-Archive -Path 'dist/${BIN_NAME}' -DestinationPath '${ARCHIVE}' -Force"
+              zip "${file}.zip" "$file"
             fi
-          else
-            if [ "${HAS_NOTES}" = "true" ]; then
-              (cd dist && zip -q "${TARGET}.zip" "${BIN_NAME}" "RELEASE-NOTES.md")
-            else
-              (cd dist && zip -q "${TARGET}.zip" "${BIN_NAME}")
-            fi
-          fi
+          done
 
-          echo "archive=${ARCHIVE}" >> "${GITHUB_OUTPUT}"
-
-      - name: Upload release asset
-        uses: actions/upload-release-asset@v1
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ${{ steps.build.outputs.archive }}
-          asset_name: git-community-standards-${{ github.ref_name }}-${{ matrix.goos }}-${{ matrix.goarch }}.${{ matrix.archive_ext }}
-          asset_content_type: application/octet-stream
