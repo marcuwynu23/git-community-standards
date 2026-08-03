@@ -47,7 +47,7 @@ type App struct {
 	Stderr  io.Writer
 	// BaseDir, when set, is prepended to every LocalPath. It allows tests to
 	// sandbox filesystem operations in a temporary directory.
-	BaseDir string
+	BaseDir  string
 	useColor bool
 }
 
