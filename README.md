@@ -14,17 +14,20 @@ CLI tool to apply standard community files to a GitHub repository from a shared 
 
 ## Overview
 
-`git-community-standards` helps keep repository governance docs consistent by downloading and writing common files such as:
+`git-community-standards` helps keep repository governance docs consistent by downloading and writing common files:
 
+**General docs (always applied):**
 - `README.md`
 - `CONTRIBUTING.md`
 - `CODE_OF_CONDUCT.md`
 - `RELEASE-NOTES.md`
 - `LICENSE` (when available in source)
 - `SECURITY.md` (when available in source)
-- `.github/FUNDING.yml`
-- `.github/ISSUE_TEMPLATE/*`
-- `.github/PULL_REQUEST_TEMPLATE.md`
+
+**Platform templates (choose `github`, `gitlab`, or `bitbucket`):**
+- GitHub: `.github/FUNDING.yml`, `.github/ISSUE_TEMPLATE/*`, `.github/PULL_REQUEST_TEMPLATE.md`
+- GitLab: `.gitlab/issue_templates/*`, `.gitlab/merge_request_templates/default.md`
+- Bitbucket: `.bitbucket/ISSUE_TEMPLATE/*`, `.bitbucket/PULL_REQUEST_TEMPLATE.md`
 
 The tool supports safe default behavior (skip existing files) and explicit override mode.
 
@@ -53,9 +56,9 @@ This project is designed to be used in git-style form:
 ```bash
 git community-standards list
 git community-standards apply
-git community-standards apply <category>
+git community-standards apply <github|gitlab|bitbucket|none>
 git community-standards apply override
-git community-standards apply <category> override
+git community-standards apply <github|gitlab|bitbucket> override
 git community-standards --version
 git community-standards -v
 ```
@@ -64,17 +67,18 @@ If you run the binary directly, the same command arguments work without the lead
 
 ### Commands
 
-- `list`: show available categories.
-- `apply`: apply all categories.
-- `apply <category>`: apply one category.
+- `list`: show available platforms and general docs.
+- `apply`: apply the general community docs only.
+- `apply <platform>`: apply general docs plus the given platform templates (`github`, `gitlab`, or `bitbucket`).
+- `apply none` / `apply general`: apply general community docs only.
 - `override`: replace existing files instead of skipping them.
 
-### Categories
+### Platforms
 
-- `root`
-- `github`
-- `issue-templates`
-- `pr-template`
+- `none` (default): general community docs only.
+- `github`: GitHub templates under `.github` (FUNDING, issue templates, pull request template).
+- `gitlab`: GitLab templates under `.gitlab` (issue templates, merge request template).
+- `bitbucket`: Bitbucket templates (issue templates and pull request template).
 
 ## Development
 
