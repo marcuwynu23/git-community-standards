@@ -114,7 +114,7 @@ func main() {
 	}
 
 	if args[0] == "--version" || args[0] == "-v" {
-		fmt.Println(version)
+		printSuccess("git-community-standards %s", version)
 		return
 	}
 
@@ -123,7 +123,7 @@ func main() {
 		listCategories()
 	case "apply":
 		if err := applyCommand(args[1:]); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			printError("%v", err)
 			os.Exit(1)
 		}
 	default:
@@ -151,11 +151,18 @@ func applyCommand(args []string) error {
 		platform = arg
 	}
 
+	// Validate the requested platform before touching the filesystem.
+	if platform != "" && platform != "none" && platform != "general" {
+		if _, ok := platforms[platform]; !ok {
+			return fmt.Errorf("unknown platform %q. Run `git-community-standards list` to see valid options", platform)
+		}
+	}
+
 	fmt.Println("Applying community standards...")
 	if !override {
-		fmt.Println("Override mode: OFF (existing files will be skipped)")
+		printInfo("Override mode: OFF (existing files will be skipped)")
 	} else {
-		fmt.Println("Override mode: ON (existing files will be replaced)")
+		printWarn("Override mode: ON (existing files will be replaced)")
 	}
 
 	if err := applySpecs(generalFiles, override); err != nil {
@@ -163,19 +170,15 @@ func applyCommand(args []string) error {
 	}
 
 	if platform == "" || platform == "none" || platform == "general" {
-		fmt.Println("General community docs applied successfully.")
+		printSuccess("General community docs applied successfully.")
 		return nil
 	}
 
-	specs, ok := platforms[platform]
-	if !ok {
-		return fmt.Errorf("unknown platform %q. Run `git-community-standards list` to see valid options", platform)
-	}
-
+	specs := platforms[platform]
 	if err := applySpecs(specs, override); err != nil {
 		return err
 	}
-	fmt.Printf("Platform %q templates applied successfully.\n", platform)
+	printSuccess("Platform %q templates applied successfully.", platform)
 	return nil
 }
 
@@ -183,17 +186,17 @@ func applySpecs(specs []fileSpec, override bool) error {
 	for _, spec := range specs {
 		if !override {
 			if _, err := os.Stat(spec.LocalPath); err == nil {
-				fmt.Printf("Skipping %s (already exists). Use `apply override` to replace it.\n", spec.LocalPath)
+				printWarn("Skipping %s (already exists). Use `apply override` to replace it.", spec.LocalPath)
 				continue
 			} else if !errors.Is(err, os.ErrNotExist) {
 				return fmt.Errorf("failed checking %s: %w", spec.LocalPath, err)
 			}
 		}
 
-		fmt.Printf("Downloading %s...\n", spec.LocalPath)
+		printStep("Downloading %s...", spec.LocalPath)
 		if err := downloadAndWrite(spec); err != nil {
 			if spec.Optional {
-				fmt.Printf("Skipping optional file %s: %v\n", spec.LocalPath, err)
+				printWarn("Skipping optional file %s: %v", spec.LocalPath, err)
 				continue
 			}
 			return fmt.Errorf("failed downloading %s: %w", spec.RemotePath, err)
@@ -220,7 +223,7 @@ func downloadAndWrite(spec fileSpec) error {
 	}
 
 	if usedRemotePath != spec.RemotePath {
-		fmt.Printf("Using fallback source %s for %s.\n", usedRemotePath, spec.LocalPath)
+		printInfo("Using fallback source %s for %s.", usedRemotePath, spec.LocalPath)
 	}
 
 	parentDir := filepath.Dir(spec.LocalPath)
@@ -248,27 +251,26 @@ func fetchRemote(remotePath string) ([]byte, error) {
 }
 
 func listCategories() {
-	fmt.Println("General docs (always applied):")
-	fmt.Println("- general: README, LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, RELEASE-NOTES, SECURITY")
-	fmt.Println("Available platforms (applied on top of general docs):")
+	printHeader("General docs (always applied):")
+	printPlain("  general: README, LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, RELEASE-NOTES, SECURITY\n\n")
+	printHeader("Available platforms (applied on top of general docs):")
 	for _, platform := range platformOrder {
 		description := platformDescriptions[platform]
 		if description == "" {
 			description = "No description available."
 		}
-		fmt.Printf("- %s: %s\n", platform, description)
+		printStep("%s: %s", platform, description)
 	}
 }
 
 func printUsage() {
-	fmt.Println("Usage:")
-	fmt.Println("  git community-standards list")
-	fmt.Println("  git community-standards apply")
-	fmt.Println("  git community-standards apply <github|gitlab|bitbucket|none>")
-	fmt.Println("  git community-standards apply override")
-	fmt.Println("  git community-standards apply <github|gitlab|bitbucket> override")
-	fmt.Println("  git community-standards --version")
-	fmt.Println("  git community-standards -v")
-	fmt.Println()
-	fmt.Println("If no platform (or `none`) is given, only the general community docs are applied.")
+	printHeader("Usage:")
+	printPlain("  git community-standards list\n")
+	printPlain("  git community-standards apply\n")
+	printPlain("  git community-standards apply <github|gitlab|bitbucket|none>\n")
+	printPlain("  git community-standards apply override\n")
+	printPlain("  git community-standards apply <github|gitlab|bitbucket> override\n")
+	printPlain("  git community-standards --version\n")
+	printPlain("  git community-standards -v\n\n")
+	printInfo("If no platform (or `none`) is given, only the general community docs are applied.")
 }

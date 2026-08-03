@@ -65,6 +65,8 @@ git community-standards -v
 
 If you run the binary directly, the same command arguments work without the leading `git`.
 
+Output is colorized when written to an interactive terminal. Piping, redirecting, setting `NO_COLOR`, or the `dumb` `TERM` value disables color automatically; errors always go to stderr.
+
 ### Commands
 
 - `list`: show available platforms and general docs.
