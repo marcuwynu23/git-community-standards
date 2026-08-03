@@ -2,7 +2,7 @@
 
 # git-community-standards
 
-CLI tool to apply standard community files to a GitHub repository from a shared template source.
+CLI tool to apply standard community files to a repository from a shared template source, with templates for GitHub, GitLab, and Bitbucket.
 
 [![Test](https://img.shields.io/github/actions/workflow/status/marcuwynu23/git-community-standards/test.yml?branch=main&label=test)](https://github.com/marcuwynu23/git-community-standards/actions/workflows/test.yml)
 [![Release](https://img.shields.io/github/actions/workflow/status/marcuwynu23/git-community-standards/release.yml?label=release)](https://github.com/marcuwynu23/git-community-standards/actions/workflows/release.yml)
