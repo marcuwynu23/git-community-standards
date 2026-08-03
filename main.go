@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"sort"
 )
 
 const baseURL = "https://raw.githubusercontent.com/marcuwynu23/git-community-standards/refs/heads/main/docs/templates"
@@ -21,55 +20,87 @@ type fileSpec struct {
 	Optional   bool
 }
 
-var categoryDescriptions = map[string]string{
-	"root":            "Root-level community docs (README, CONTRIBUTING, CODE_OF_CONDUCT, RELEASE-NOTES, etc.)",
-	"github":          "GitHub repository metadata files under .github (for example FUNDING.yml)",
-	"issue-templates": "GitHub issue templates under .github/ISSUE_TEMPLATE",
-	"pr-template":     "GitHub pull request template under .github/PULL_REQUEST_TEMPLATE.md",
+var generalFiles = []fileSpec{
+	{RemotePath: "general/README.md", LocalPath: "README.md"},
+	{
+		RemotePath: "general/LICENSE.md",
+		LocalPath:  "LICENSE",
+		Fallbacks:  []string{"general/LICENSE", "general/LICENCE", "general/LICENCE.md"},
+		Optional:   true,
+	},
+	{RemotePath: "general/CONTRIBUTING.md", LocalPath: "CONTRIBUTING.md"},
+	{RemotePath: "general/CODE_OF_CONDUCT.md", LocalPath: "CODE_OF_CONDUCT.md"},
+	{RemotePath: "general/RELEASE-NOTES.md", LocalPath: "RELEASE-NOTES.md"},
+	{
+		RemotePath: "general/SECURITY.md",
+		LocalPath:  "SECURITY.md",
+		Fallbacks:  []string{"general/SECURITY_POLICY.md"},
+		Optional:   true,
+	},
 }
 
-var categories = map[string][]fileSpec{
-	"root": {
-		{RemotePath: "README.md", LocalPath: "README.md"},
-		{
-			RemotePath: "LICENSE",
-			LocalPath:  "LICENSE",
-			Fallbacks:  []string{"LICENSE.md", "LICENCE", "LICENCE.md"},
-			Optional:   true,
-		},
-		{RemotePath: "CONTRIBUTING.md", LocalPath: "CONTRIBUTING.md"},
-		{RemotePath: "CODE_OF_CONDUCT.md", LocalPath: "CODE_OF_CONDUCT.md"},
-		{RemotePath: "RELEASE-NOTES.md", LocalPath: "RELEASE-NOTES.md"},
-		{
-			RemotePath: "SECURITY.md",
-			LocalPath:  "SECURITY.md",
-			Fallbacks:  []string{"SECURITY_POLICY.md"},
-			Optional:   true,
-		},
-	},
+var platformDescriptions = map[string]string{
+	"github":    "GitHub templates under .github (FUNDING, issue templates, pull request template)",
+	"gitlab":    "GitLab templates under .gitlab (issue templates, merge request template)",
+	"bitbucket": "Bitbucket templates (issue templates and pull request template)",
+}
+
+var platforms = map[string][]fileSpec{
 	"github": {
-		{RemotePath: "FUNDING.yml", LocalPath: ".github/FUNDING.yml"},
-	},
-	"issue-templates": {
+		{RemotePath: "github/FUNDING.yml", LocalPath: ".github/FUNDING.yml"},
 		{
-			RemotePath: ".github/ISSUE_TEMPLATE/bug_report.md",
+			RemotePath: "github/bug_report.md",
 			LocalPath:  ".github/ISSUE_TEMPLATE/bug_report.md",
-			Fallbacks:  []string{"ISSUE_TEMPLATE/bug_report.md", "bug_report.md"},
+			Fallbacks:  []string{"bug_report.md"},
 		},
 		{
-			RemotePath: ".github/ISSUE_TEMPLATE/feature_request.md",
+			RemotePath: "github/feature_request.md",
 			LocalPath:  ".github/ISSUE_TEMPLATE/feature_request.md",
-			Fallbacks:  []string{"ISSUE_TEMPLATE/feature_request.md", "feature_request.md"},
+			Fallbacks:  []string{"feature_request.md"},
 		},
-	},
-	"pr-template": {
 		{
-			RemotePath: ".github/PULL_REQUEST_TEMPLATE.md",
+			RemotePath: "github/PULL_REQUEST_TEMPLATE.md",
 			LocalPath:  ".github/PULL_REQUEST_TEMPLATE.md",
 			Fallbacks:  []string{"PULL_REQUEST_TEMPLATE.md"},
 		},
 	},
+	"gitlab": {
+		{
+			RemotePath: "gitlab/bug_report.md",
+			LocalPath:  ".gitlab/issue_templates/bug_report.md",
+			Fallbacks:  []string{"bug_report.md"},
+		},
+		{
+			RemotePath: "gitlab/feature_request.md",
+			LocalPath:  ".gitlab/issue_templates/feature_request.md",
+			Fallbacks:  []string{"feature_request.md"},
+		},
+		{
+			RemotePath: "gitlab/MR_TEMPLATE.md",
+			LocalPath:  ".gitlab/merge_request_templates/default.md",
+			Fallbacks:  []string{"MR_TEMPLATE.md"},
+		},
+	},
+	"bitbucket": {
+		{
+			RemotePath: "bitbucket/bug_report.md",
+			LocalPath:  ".bitbucket/ISSUE_TEMPLATE/bug_report.md",
+			Fallbacks:  []string{"bug_report.md"},
+		},
+		{
+			RemotePath: "bitbucket/feature_request.md",
+			LocalPath:  ".bitbucket/ISSUE_TEMPLATE/feature_request.md",
+			Fallbacks:  []string{"feature_request.md"},
+		},
+		{
+			RemotePath: "bitbucket/PULL_REQUEST_TEMPLATE.md",
+			LocalPath:  ".bitbucket/PULL_REQUEST_TEMPLATE.md",
+			Fallbacks:  []string{"PULL_REQUEST_TEMPLATE.md"},
+		},
+	},
 }
+
+var platformOrder = []string{"github", "gitlab", "bitbucket"}
 
 func main() {
 	args := os.Args[1:]
@@ -103,21 +134,21 @@ func main() {
 
 func applyCommand(args []string) error {
 	if len(args) > 2 {
-		return errors.New("usage: git community-standards apply [category] [override]")
+		return errors.New("usage: git community-standards apply [github|gitlab|bitbucket|none] [override]")
 	}
 
 	override := false
-	category := ""
+	platform := ""
 
 	for _, arg := range args {
 		if arg == "override" {
 			override = true
 			continue
 		}
-		if category != "" {
-			return errors.New("usage: git community-standards apply [category] [override]")
+		if platform != "" {
+			return errors.New("usage: git community-standards apply [github|gitlab|bitbucket|none] [override]")
 		}
-		category = arg
+		platform = arg
 	}
 
 	fmt.Println("Applying community standards...")
@@ -127,30 +158,28 @@ func applyCommand(args []string) error {
 		fmt.Println("Override mode: ON (existing files will be replaced)")
 	}
 
-	if category == "" {
-		order := []string{"root", "github", "issue-templates", "pr-template"}
-		for _, category := range order {
-			if err := applyCategory(category, override); err != nil {
-				return err
-			}
-		}
-		fmt.Println("Community standards applied successfully.")
+	if err := applySpecs(generalFiles, override); err != nil {
+		return err
+	}
+
+	if platform == "" || platform == "none" || platform == "general" {
+		fmt.Println("General community docs applied successfully.")
 		return nil
 	}
 
-	if _, ok := categories[category]; !ok {
-		return fmt.Errorf("unknown category %q. Run `git-community-standards list` to see valid categories", category)
+	specs, ok := platforms[platform]
+	if !ok {
+		return fmt.Errorf("unknown platform %q. Run `git-community-standards list` to see valid options", platform)
 	}
 
-	if err := applyCategory(category, override); err != nil {
+	if err := applySpecs(specs, override); err != nil {
 		return err
 	}
-	fmt.Printf("Category %q applied successfully.\n", category)
+	fmt.Printf("Platform %q templates applied successfully.\n", platform)
 	return nil
 }
 
-func applyCategory(category string, override bool) error {
-	specs := categories[category]
+func applySpecs(specs []fileSpec, override bool) error {
 	for _, spec := range specs {
 		if !override {
 			if _, err := os.Stat(spec.LocalPath); err == nil {
@@ -219,18 +248,15 @@ func fetchRemote(remotePath string) ([]byte, error) {
 }
 
 func listCategories() {
-	fmt.Println("Available categories:")
-	keys := make([]string, 0, len(categories))
-	for category := range categories {
-		keys = append(keys, category)
-	}
-	sort.Strings(keys)
-	for _, category := range keys {
-		description := categoryDescriptions[category]
+	fmt.Println("General docs (always applied):")
+	fmt.Println("- general: README, LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, RELEASE-NOTES, SECURITY")
+	fmt.Println("Available platforms (applied on top of general docs):")
+	for _, platform := range platformOrder {
+		description := platformDescriptions[platform]
 		if description == "" {
 			description = "No description available."
 		}
-		fmt.Printf("- %s: %s\n", category, description)
+		fmt.Printf("- %s: %s\n", platform, description)
 	}
 }
 
@@ -238,9 +264,11 @@ func printUsage() {
 	fmt.Println("Usage:")
 	fmt.Println("  git community-standards list")
 	fmt.Println("  git community-standards apply")
-	fmt.Println("  git community-standards apply <category>")
+	fmt.Println("  git community-standards apply <github|gitlab|bitbucket|none>")
 	fmt.Println("  git community-standards apply override")
-	fmt.Println("  git community-standards apply <category> override")
+	fmt.Println("  git community-standards apply <github|gitlab|bitbucket> override")
 	fmt.Println("  git community-standards --version")
 	fmt.Println("  git community-standards -v")
+	fmt.Println()
+	fmt.Println("If no platform (or `none`) is given, only the general community docs are applied.")
 }
