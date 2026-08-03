@@ -10,7 +10,7 @@ import (
 	"sort"
 )
 
-const baseURL = "https://gist.githubusercontent.com/marcuwynu23/60930ccb7f106d793e67fca57fb8665b/raw"
+const baseURL = "https://raw.githubusercontent.com/marcuwynu23/git-community-standards/refs/heads/main/docs/templates"
 
 var version = "dev"
 
